@@ -12,18 +12,17 @@ sub date {
 
     my ( $target_time , $format ) = @_;
 
-
     my $time = localtime;
 
     if( !$format ) {
-    	$format = '%Y-%m-%d %H:%M:%S';
+        $format = '%Y-%m-%d %H:%M:%S';
     }
 
-	if( $target_time ){
-	    return $time->strftime( $target_time, $format);
-	} else {
-		return $time->strftime( $format );
-	}
+    if( $target_time ){
+        return $time->strftime( $target_time, $format);
+    } else {
+        return $time->strftime( $format );
+    }
 }
 
 1;
