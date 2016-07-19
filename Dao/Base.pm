@@ -79,8 +79,19 @@ sub select{
     while(my $row = $result->fetch_hash){
         push @records ,$row;
     }
-
+    $self->query_log;
     return \@records;
+}
+
+###
+### SQLのログを取得
+###
+sub query_log{
+
+    my $self = shift;
+    my $last_sql = $self->{dbh}->last_sql;
+    Util::Debug->debug( $last_sql );
+
 }
 
 ###
@@ -103,7 +114,7 @@ sub read{
             delete_flg => 0
         }
     )->fetch_hash_one;
-
+    $self->query_log;
     return $record;
 
 }
@@ -118,7 +129,7 @@ sub insert{
     $hash->{"delete_flg"} = 0;
 
     my $result = $self->{dbh}->insert( $hash, table => $table  );
-
+    $self->query_log;
 }
 
 1;
