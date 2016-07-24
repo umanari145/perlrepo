@@ -68,7 +68,6 @@ sub select{
     if( defined( $where ) ) {
         $select_hash->{where} = $where;
     };
-    $select_hash->{where}->{"delete_flg"} = 0;
 
     my $result;
     $result = $self->{dbh}->select( %$select_hash );
@@ -126,7 +125,6 @@ sub insert{
 
     $hash->{"created"}    = Util::DateUtil->date;
     $hash->{"modified"}   = Util::DateUtil->date;
-    $hash->{"delete_flg"} = 0;
 
     my $result = $self->{dbh}->insert( $hash, table => $table  );
     $self->query_log;

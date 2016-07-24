@@ -10,12 +10,11 @@ use Util::Debug;
 use Util::DateUtil;
 use Web::Scraper;
 use utf8;
-
+use WWW::Mechanize;
 
 sub new {
 	my $class = shift;
 
-    my ( $url ) = @_;
     my $self = {};
     return bless $self , $class;
 }
@@ -42,6 +41,18 @@ sub get_hash_list_from_element{
 
     return $res;
 
+}
+
+###
+### 生のHTMLをそのまま取得するプログラム
+###
+sub get_row_HTML{
+
+    my $self = shift;
+    my( $url ) = @_;
+    my  $mech =  WWW::Mechanize->new();
+    $mech->get($url);
+    return $mech->content();
 }
 
 1;
