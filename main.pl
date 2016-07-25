@@ -4,8 +4,11 @@ use strict;
 use warnings;
 use Data::Dumper;
 use YAML::Syck;
+use DBI;
+use DBIx::Custom;
 use Dao::Items;
 use Dao::Tags;
+use Dao::ItemTags;
 use Scraping::Base;
 use Util::Debug;
 use Util::DateUtil;
@@ -15,9 +18,11 @@ use utf8;
 
 my $conf_file = 'config.yaml';
 my $config = YAML::Syck::LoadFile($conf_file);
+my $dbobj = &connetct_dbh( $config->{"main_db"});
 
 my $croller = Scraping::Base->new();
-
+$croller->get_donwload_image("http://coolship100.net/wp-content/uploads/2015/01/sasiko4.jpeg" );
+exit;
 my $first_elements = &make_first_element;
 my $hash_list = $croller->get_hash_list_from_element( $config->{"first_site"}->{"url"} , $first_elements );
 
@@ -31,13 +36,67 @@ for my $data ( @$data_arr ) {
     my $contents_data  = $croller->get_hash_list_from_element( $data->{"contents_url"}, $second_element );
 
     my $tag_id_arr = &extract_other_data( $contents_data );
-    Util::Debug->debug( $tag_id_arr);
+    #Util::Debug->debug( $tag_id_arr );
     my $item_entity = &make_item_entity( $data , $contents_data );
-    Util::Debug->debug( $item_entity);
+    #Util::Debug->debug( $item_entity);
+    &regist_item( $item_entity, $tag_id_arr );
+}
+&commit_dbh;
 
-    exit;
+
+sub connetct_dbh{
+
+    my ( $database_config ) = @_;
+
+	my $datasource = $database_config->{"datasource"};
+    my $host       = $database_config->{"host"};
+    my $database   = $database_config->{"database"};
+    my $password   = $database_config->{"password"};
+    my $user       = $database_config->{"user"};
+
+    my $dbh = DBIx::Custom->connect(
+        dsn      =>   "dbi:" . $datasource . ":database=" . $database. ";host=". $host .";port=3306",
+        password => $password,
+        user     => $user,
+        option   => {
+           mysql_enable_utf8   => 1,
+           AutoCommit          => 0,
+           PrintError          => 1,
+           RaiseError          => 1,
+           ShowErrorStatement  => 1,
+           AutoInactiveDestroy => 1
+        }
+    );
+
+    return {
+        database => $database,
+        dbh      => $dbh
+    };
 }
 
+sub commit_dbh{
+	$dbobj->{dbh}->commit;
+}
+
+###
+### 商品の登録
+###
+sub regist_item{
+
+    my ( $item_entity, $tag_id_arr ) = @_;
+
+    my $item_dao      = Dao::Items->new( $dbobj );
+    my $item_tags_dao = Dao::ItemTags->new( $dbobj );
+
+	my $is_exist_original_contents = $item_dao->is_exist_original_contents( $item_entity->{"original_contents_id"} );
+	#Util::Debug->debug( $is_exist_original_contents );
+
+    if( !$is_exist_original_contents){
+        my $item_id = $item_dao->insert( $item_entity );
+	    $item_tags_dao->regist_item_tag_id( $item_id,$tag_id_arr)
+	    #Util::Debug->debug( $id );
+    }
+}
 
 ###
 ### URLの置換
@@ -61,11 +120,11 @@ sub get_tag_id_arr{
 
     my ( $tag_str_arr ) =@_;
 
-    my $item_dao = Dao::Tags->new( $config->{"main_db"});
+    my $tag_dao = Dao::Tags->new( $dbobj );
 
     my @tag_id_arr = ();
     for my $tag_str (@$tag_str_arr ){
-        my $tag_id =  $item_dao->get_tag_id_by_tag_str( $tag_str);
+        my $tag_id =  $tag_dao->get_tag_id_by_tag_str( $tag_str);
         if( $tag_id && $tag_id->{"id"} ) {
             push @tag_id_arr , $tag_id->{"id"};
         }

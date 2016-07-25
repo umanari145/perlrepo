@@ -14,30 +14,11 @@ sub new {
 
     my $class = shift;
 
-    my ( $database_config ) = @_;
-
-    my $datasource = $database_config->{"datasource"};
-    my $host       = $database_config->{"host"};
-    my $database   = $database_config->{"database"};
-    my $password   = $database_config->{"password"};
-    my $user       = $database_config->{"user"};
-
-    my $dbh = DBIx::Custom->connect(
-        dsn      =>   "dbi:" . $datasource . ":database=" . $database. ";host=". $host .";port=3306",
-        password => $password,
-        user     => $user,
-        option   => {
-           mysql_enable_utf8   => 1,
-           AutoCommit          => 0,
-           PrintError          => 1,
-           RaiseError          => 1,
-           ShowErrorStatement  => 1,
-           AutoInactiveDestroy => 1
-        }
-    );
+    my ( $dbobj ) = @_;
 
     my $self = {
-        dbh   => $dbh
+        dbh      => $dbobj->{dbh},
+        database => $dbobj->{database}
     };
 
     return bless $self , $class;
@@ -83,6 +64,28 @@ sub select{
 }
 
 ###
+### 通常のcount文を発行
+###
+sub count{
+
+    my $self = shift;
+
+    my ( $where ) = @_;
+
+    my $select_hash;
+    $select_hash->{table}  = $self->{table};
+
+    if( defined( $where ) ) {
+        $select_hash->{where} = $where;
+    };
+
+    my $result;
+    $result = $self->{dbh}->count( %$select_hash );
+    $self->query_log;
+    return $result;
+}
+
+###
 ### SQLのログを取得
 ###
 sub query_log{
@@ -121,13 +124,33 @@ sub read{
 sub insert{
 
     my $self = shift;
-    my ( $table , $hash ) = @_;
+    my ( $hash ) = @_;
 
+    my $table = $self->{table};
     $hash->{"created"}    = Util::DateUtil->date;
     $hash->{"modified"}   = Util::DateUtil->date;
 
     my $result = $self->{dbh}->insert( $hash, table => $table  );
     $self->query_log;
+    if( $result ) {
+        return $self->{dbh}->last_insert_id( $self->{database}, $self->{database}, $table, "id");
+    }
+}
+
+sub insert_bulk{
+    my $self = shift;
+    my ( $arr ) = @_;
+
+    my $table = $self->{table};
+
+    for my $data ( @$arr) {
+        $data->{"created"}    = Util::DateUtil->date;
+        $data->{"modified"}   = Util::DateUtil->date;
+    }
+
+    my $res = $self->{dbh}->insert( $arr , table => $table, bulk_insert => 1);
+    $self->query_log;
+    return $res;
 }
 
 1;

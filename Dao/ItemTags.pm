@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-package Dao::Items;
+package Dao::ItemTags;
 
 use strict;
 use warnings;
@@ -9,7 +9,9 @@ use Util::Debug;
 
 sub new{
     my $self = shift->SUPER::new(@_);
-    $self->set_table( "items" );
+
+    $self->set_table( "item_tags" );
+
     return $self;
 }
 
@@ -32,19 +34,24 @@ sub read{
 }
 
 ###
-### オリジナルコンテンツの重複があるかいなかのチェック
+### タグの文字列からidを取得する
 ###
-sub is_exist_original_contents{
+sub regist_item_tag_id{
 
     my $self = shift;
-    my ( $original_contents_id ) = @_;
+    my ( $item_id,$tag_id_arr ) = @_;
 
-    my $where     = " original_contents_id ='" . $original_contents_id. "'";
-    my $res_count = $self->SUPER::count( $where );
+    my @params = ();
 
-    return $res_count;
+    for my $tag_id ( @$tag_id_arr ) {
+        my $item_tag_entity ={
+            'item_id' => $item_id,
+            'tag_id'  => $tag_id
+        };
+        push @params , $item_tag_entity;
+    }
+
+    $self->SUPER::insert_bulk( \@params );
 }
-
-
 
 1;
